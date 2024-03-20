@@ -37,7 +37,7 @@ module.exports = function (app) {
       let { issue_title, issue_text, created_by, assigned_to, status_text } = req.body;
 
       if (!issue_title || !issue_text || !created_by) {
-        console.log("missing field(s)")
+        return res.json({ error: "required field(s) missing" })
       } else {
         const issue = new issueModel({
           project: project,
@@ -52,7 +52,20 @@ module.exports = function (app) {
         })
 
         issue.save()
-          .then(data => { if (data) console.log("issue was created successfully") })
+          .then(data => {
+            let newIssue = {
+              _id: data._id,
+              assigned_to: data.assigned_to,
+              status_text: data.status_text,
+              issue_title: data.issue_title,
+              issue_text: data.issue_text,
+              created_by: data.created_by,
+              created_on: data.created_on,
+              updated_on: data.updated_on,
+              open: data.open,
+            };
+            return res.json(newIssue);
+          })
           .catch(err => console.log(err));
       }
     })
@@ -61,17 +74,21 @@ module.exports = function (app) {
       let issue = Object.assign(req.body);
 
       if (!issue._id) {
-        console.log("missing id")
-      } else if (!issue.issue_title && !issue.issue_text && !issue.created_by && !issue.assigned_to && !issue.status_text) {
-        console.log("no update field(s) sent")
+        return res.json({ error: "missing _id" });
+      }
+      if (!issue.issue_title && !issue.issue_text && !issue.created_by && !issue.assigned_to && !issue.status_text) {
+        return res.json({ error: "no update field(s) sent", _id: issue._id });
       } else {
         issue.updated_on = new Date();
 
         Object.keys(issue).forEach((k) => issue[k] == '' && delete issue[k]);
 
         issueModel.findByIdAndUpdate(issue._id, issue).exec()
-          .then(data => { if (data) console.log("issue was updated successfully") })
-          .catch(err => console.log(err));
+          .then((data) => {
+            if (data) return res.json({ result: "successfully updated", _id: issue._id })
+            else return res.json({ error: "could not update", _id: issue._id });
+          })
+          .catch((err) => console.log(err));
       }
 
     })
@@ -80,11 +97,14 @@ module.exports = function (app) {
       let issue = Object.assign(req.body);
 
       if (!issue._id) {
-        console.log('missing id')
+        return res.json({ error: "missing _id"});
       } else {
         issueModel.findByIdAndDelete(issue._id).exec()
-          .then(data => { if (data) console.log("issue was deleted successfully") })
-          .catch(err => console.log(err))
+          .then((data) => {
+            if (data) return res.json({ result: "successfully deleted", _id: issue._id, });
+            else return res.json({ error: "could not delete", _id: issue._id });
+          })
+          .catch((err) => console.log(err))
       }
     });
 
